@@ -1,24 +1,53 @@
 import '../css/Home.css'
 
 import MovieCard from "../components/MovieCard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { searchMovies, getPopularMovies } from "../services/api"
 
 function Home() {
 
     const [searchTerm, setSearchTerm] = useState("");
+    const [popularMovies, setPopularMovies] = useState([]);
+    const [searchResults, setSearchResults] = useState([]);
+    const [error, setError] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-    const movies = [
-        { id: 1, title: "Inception film", release_date: "2010-07-16", url: "https://m.media-amazon.com/images/I/51s+qjv9ZlL._AC_.jpg" },
-        { id: 2, title: "The Dark Knight film", release_date: "2008-07-18", url: "https://m.media-amazon.com/images/I/51s+qjv9ZlL._AC_.jpg" },
-        { id: 3, title: "Next Inception film", release_date: "2010-07-16", url: "https://m.media-amazon.com/images/I/51s+qjv9ZlL._AC_.jpg" },
-        { id: 4, title: "The New White Knight film", release_date: "2008-07-18", url: "https://m.media-amazon.com/images/I/51s+qjv9ZlL._AC_.jpg" },
-    ]
+    useEffect(() => {
+        const fetchPopularMovies = async () => {
+            try {
+                const movies = await getPopularMovies();
+                setPopularMovies(movies);
+            } catch (err) {
+                setError("Failed to fetch popular movies. Please try again later.");
+                console.error("Error fetching popular movies:", err);
+            } finally {
+                console.log("Finished fetching popular movies.");
+                setLoading(false);
+            }
+        };
 
-    const onSearchSubmit = (e) => {
+        fetchPopularMovies();
+    }, []);
+
+
+    const onSearchSubmit = async (e) => {
         e.preventDefault();
-        alert(`You searched for: ${searchTerm}`);
-        setSearchTerm("");
-    }
+        if(!searchTerm.trim()) return
+        if(loading) return
+
+        setLoading(true);
+
+        try{
+            const searchResults = await searchMovies(searchTerm);
+            setPopularMovies(searchResults)
+            setError(null);
+        }catch(err){
+            setError("Failed to search movies. Please try again later.");
+            console.error("Error searching movies:", err);
+        }finally{
+            setLoading(false);
+        }
+    } 
 
     return (
         <div className="home">
@@ -35,12 +64,17 @@ function Home() {
                 <button type="submit" className="search-button">Search</button>
             </form>
 
-            <div className="movies-grid">
-                {movies.map(movie =>
-                    movie.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
-                    <MovieCard key={movie.id} movie={movie} />
-                )}
-            </div>
+            {error && <div className="error-message">{error}</div>}
+
+            {loading ? (<p>Loading movies...</p>) : (
+                <div className="movies-grid">
+                    {popularMovies.map(movie =>
+                        movie.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
+                        <MovieCard key={movie.id} movie={movie} />
+                    )}
+                </div>
+            )}
+
         </div>
     );
 }
